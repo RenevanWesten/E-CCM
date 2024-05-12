@@ -1,6 +1,6 @@
 # E-CCM
 
-The Role of Sea-ice Processes on the Probability of AMOC Transitions, submitted to Journal of Climate (January 2024)
+The Role of Sea-ice Processes on the Probability of AMOC Transitions, submitted to Journal of Climate (May 2024)
 
 René M. van Westen, Valérian Jacques-Dumas, Amber A. Boot and Henk A. Dijkstra
 
