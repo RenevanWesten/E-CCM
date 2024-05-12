@@ -607,7 +607,7 @@ if __name__ == "__main__":
     
     #-----------------------------------------------------------------------------------------
     
-    ax.set_title('a) AMOC strength ($q_N^{\mathrm{ice}}$)')
+    ax.set_title('a) AMOC strength ($q_N^{\mathrm{ice}}$), E-CCM')
 
     #%%
     
@@ -715,6 +715,273 @@ if __name__ == "__main__":
     
     #-----------------------------------------------------------------------------------------
     
-    ax.set_title('b) $F_{\mathrm{ovS}}$')
+    ax.set_title('b) $F_{\mathrm{ovS}}$, E-CCM')
+
+
+    #-----------------------------------------------------------------------------------------
+    #-----------------------------------------------------------------------------------------
+    #-----------------------------------------------------------------------------------------
+
+    #The data folder contains the steady states, spaced by d E_A = 0.005 Sv
+     
+    #E-CCM with temperature and ice parameters   
+    model = MOCModel(delta_t=86400 * 5, datafolder='../../Data/E-CCM/Steady_states/')   
+
+    # Set the forcing and initialize the model
+    model.set_E_A(0.0)
+
+    # Run the model
+    # Specify the number of trajectories, the length of the trajectories in years, the initial state, the noise amplitude
+    # Init_state has to be specified, if it is a single state, it will be copied N times
+    # To start from the on-state, set init_state=model.on
+    # stop_on and stop_off let you choose to stop the trajectories when they reach the on or off state
+    # (automatically set if init_state is model.on or model.off and stop_transi=True)
+    # Traj shape = (N, T, nb of variables)
+    
+    t0 = time()
+    traj = model.run(1, 5000, model.on, stop_transi=False, stop_on=False, stop_off=False)
+    t1 = time()
+
+    print('Time elapsed: ', t1-t0)
+
+    # Get any variable from the trajectories
+    # print(model.convention)   # Official variable names
+    time_run    = model.time + 1
+
+    # Get q_N (and density difference) from the trajectories
+    q_N          = model.get_q_N(traj)
+    q_N          = q_N[0] / 10**6.0
+    q_N[q_N < 0] = q_N[q_N < 0] * 0.0
+
+    # Get q_N (and density difference) from the trajectories
+    F_ovS = model.get_F_ovS(traj)
+    F_ovS = F_ovS[0] / 10**6.0
+
+    #Determine the yearly average
+    time_year	= np.arange(0, int(time_run[-1]))+1
+    q_N_year	= np.zeros(len(time_year))
+    F_ovS_year	= np.zeros(len(time_year))
+
+    for year_i in range(len(time_year)):
+        #Convert to yearly averages (similar to the CESM)
+        q_N_year[year_i]	= np.mean(q_N[int(year_i * 365*86400/model.delta_t):int((year_i+1) * 365*86400/model.delta_t)])
+        F_ovS_year[year_i]	= np.mean(F_ovS[int(year_i * 365*86400/model.delta_t):int((year_i+1) * 365*86400/model.delta_t)])
+    
+    #%%
+    fig, ax	= subplots()
+    
+    ax.fill_between([-800, 2500], 16, 19, alpha=0.25, edgecolor='orange', facecolor='orange')
+    
+    ax.plot([0.0/0.0003, 0.0/0.0003], [-5, 37], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.1/0.0003, 0.1/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.2/0.0003, 0.2/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.3/0.0003, 0.3/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.4/0.0003, 0.4/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.5/0.0003, 0.5/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.6/0.0003, 0.6/0.0003], [-5, 33], linestyle = '--', color = 'c', linewidth = 1)
+    
+    ax.text(0.1/0.0003, 33, '0.1 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.2/0.0003, 33, '0.2 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.3/0.0003, 33, '0.3 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.4/0.0003, 33, '0.4 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.5/0.0003, 33, '0.5 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.6/0.0003, 33, '0.6 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(-250, 33, '0 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    
+    ax.plot(4400 - time_year[2199:], q_N_year[2199:], '-r', linewidth = 2, label = '1 - 2200')
+    ax.plot(time_year[:2200], q_N_year[:2200], '-k', linewidth = 2, label = '2201 - 4400')
+    
+    ax.set_xlabel('Model year')
+    ax.set_ylabel('Volume transport (Sv)')
+    ax.set_xlim(-600, 2200)
+    ax.set_ylim(-2, 35)
+    ax.grid()
+    
+    graph_1		= ax.plot([-100, -100], [-100, -100], '-k', linewidth = 1.5, label = '1 - 2200')
+    graph_2		= ax.plot([-100, -100], [-100, -100], '-r', linewidth = 1.5, label = '2201 - 5000')
+    
+    graphs	      	= graph_1 + graph_2
+    legend_labels 	= [l.get_label() for l in graphs]
+    legend_1	= ax.legend(graphs, legend_labels, loc=(0.35, 0.19), ncol=1, framealpha = 1.0, numpoints = 1)
+    
+    
+    ax.set_xticks([-500, 1, 500, 1000, 1500, 2000])
+    ax.set_xticklabels(['4900', '1', '500/3900', '1000/3400', '1500/2900', '2000/2400'])
+    ax.tick_params(axis='x', colors='white')
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("4900", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    
+    box1 = TextArea("1/", textprops=dict(color="k"))
+    box2 = TextArea("4400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.191, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("500/", textprops=dict(color="k"))
+    box2 = TextArea("3900 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.338, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("1000/", textprops=dict(color="k"))
+    box2 = TextArea("3400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.494, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("1500/", textprops=dict(color="k"))
+    box2 = TextArea("2900 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.673, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("2000/", textprops=dict(color="k"))
+    box2 = TextArea("2400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.852, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    ax.set_title('c) AMOC strength ($q_N$), CCM')
+
+    #%%
+    
+    fig, ax	= subplots()
+
+    ax.fill_between([-800, 2500], -0.28, -0.05, alpha=0.25, edgecolor='orange', facecolor='orange')
+    
+    ax.plot([0.0/0.0003, 0.0/0.0003], [-5, 37], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.1/0.0003, 0.1/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.2/0.0003, 0.2/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.3/0.0003, 0.3/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.4/0.0003, 0.4/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.5/0.0003, 0.5/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    ax.plot([0.6/0.0003, 0.6/0.0003], [-0.4, 0.312], linestyle = '--', color = 'c', linewidth = 1)
+    
+    ax.text(0.1/0.0003, 0.312, '0.1 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.2/0.0003, 0.312, '0.2 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.3/0.0003, 0.312, '0.3 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.4/0.0003, 0.312, '0.4 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.5/0.0003, 0.312, '0.5 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(0.6/0.0003, 0.312, '0.6 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    ax.text(-250, 0.312, '0 Sv', verticalalignment='bottom', horizontalalignment='center', color = 'c', fontsize=11)
+    
+    ax.plot(4400 - time_year[2199:], F_ovS_year[2199:], '-r', linewidth = 2, label = '1 - 2200')
+    ax.plot(time_year[:2200], F_ovS_year[:2200], '-k', linewidth = 2, label = '2201 - 4400')
+    
+    ax.set_xlabel('Model year')
+    ax.set_ylabel('Freshwater transport (Sv)')
+    ax.set_xlim(-600, 2200)
+    ax.set_ylim(-0.35, 0.35)
+    ax.grid()
+    
+    graph_1		= ax.plot([-100, -100], [-100, -100], '-k', linewidth = 1.5, label = '1 - 2200')
+    graph_2		= ax.plot([-100, -100], [-100, -100], '-r', linewidth = 1.5, label = '2201 - 5000')
+    
+    graphs	      	= graph_1 + graph_2
+    legend_labels 	= [l.get_label() for l in graphs]
+    legend_1	= ax.legend(graphs, legend_labels, loc='lower center', ncol=1, framealpha = 1.0, numpoints = 1)
+    
+    ax.set_xticks([-500, 1, 500, 1000, 1500, 2000])
+    ax.set_xticklabels(['4900', '1', '500/3900', '1000/3400', '1500/2900', '2000/2400'])
+    ax.tick_params(axis='x', colors='white')
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("4900", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    
+    box1 = TextArea("1/", textprops=dict(color="k"))
+    box2 = TextArea("4400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.191, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("500/", textprops=dict(color="k"))
+    box2 = TextArea("3900 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.338, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("1000/", textprops=dict(color="k"))
+    box2 = TextArea("3400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.494, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("1500/", textprops=dict(color="k"))
+    box2 = TextArea("2900 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.673, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    box1 = TextArea("2000/", textprops=dict(color="k"))
+    box2 = TextArea("2400 ", textprops=dict(color="r"))
+    
+    box = HPacker(children=[box1, box2], align="center", pad=0, sep=0)
+    
+    anchored_box = AnchoredOffsetbox(loc=3, child=box, pad=0., frameon=False, bbox_to_anchor=(0.852, -0.063), bbox_transform=ax.transAxes, borderpad=0.)
+    
+    ax.add_artist(anchored_box)
+    
+    #-----------------------------------------------------------------------------------------
+    
+    ax.set_title('d) $F_{\mathrm{ovS}}$, CCM')
+    
     
     show()
